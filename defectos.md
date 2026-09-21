@@ -1,129 +1,26 @@
-# Registro de Defectos — EJEMPLO DEL PROFESOR
+# Defectos — Pruebas de carga
 
+## Defecto 01 — Conexiones rechazadas al iniciar el estrés
 
-> **Este archivo es un ejemplo**, no su entrega. Las cifras que aparecen abajo son ilustrativas: no provienen de una corrida real de este repositorio. Para su taller parta de [`defectos_template.md`](defectos_template.md) y documente los defectos con **sus propias mediciones**.
+En el primer segundo del escenario stress, 5 peticiones fallaron con "connection refused" mientras los 200 VUs iniciales se conectaban a la vez. Después no volvió a pasar.
 
-Curso: Testing y Validación de Software\
-Proyecto: Pruebas de Carga y Rendimiento\
-Equipo: \[Nombre del equipo\]\
-Fecha: \[Fecha\]
+Evidencia (perf/results/k6-stress.log):
 
-------------------------------------------------------------------------
+time="2026-09-20T23:08:32-05:00" level=warning msg="Request Failed" error="dial tcp 127.0.0.1:8080: connectex: No connection could be made because the target machine actively refused it."
 
-## Introducción
+Esperado: 0 errores. Obtenido: 5 de 2.619.695, por debajo del umbral del 1%.
 
-Este documento recopila los defectos identificados durante la ejecución
-de pruebas de rendimiento (Baseline, Load, Stress, Spike, Soak y
-Regresión).\
-Cada defecto se documenta para garantizar trazabilidad, análisis técnico
-y propuesta de mejora.
+Causa probable: la cola de conexiones pendientes de Tomcat (accept-count, 100 por defecto) se llena con la ráfaga inicial. Es lo que pasaría en producción tras un reinicio, cuando todos reconectan a la vez.
 
-------------------------------------------------------------------------
+Estado: Abierto. Prioridad: Media. Mejora: subir server.tomcat.accept-count o suavizar la rampa inicial.
 
-## Formato 1: Lista detallada
+## Defecto 02 — El estrés no satura el servicio
 
-## Defecto PERF-01 --- Incumplimiento de SLO de latencia bajo Load
+Con 600 VUs el p95 fue 0,60 ms, casi igual que con 20. El script espera 100 ms entre peticiones, así que el límite está en el cliente, no en el servidor. Es un problema del diseño de la prueba.
 
--   Capa afectada: Aplicación / Base de datos\
--   Escenario: Load Test (200 VUs)\
--   SLO definido: p95 \< 300 ms\
--   Resultado esperado: Cumplimiento del SLO bajo carga nominal.\
--   Resultado obtenido: p95 = 612 ms
+Estado: Abierto. Prioridad: Media. Mejora: repetir con SLEEP_MS=0 o con el escenario arrival.
 
-### Evidencia
-
-http_req_duration: avg=402ms\
-p(95)=612ms\
-p(99)=890ms
-
-### Impacto
-
-Incumplimiento del objetivo de nivel de servicio bajo carga esperada.
-
-### Causa probable
-
--   Saturación del pool de conexiones.\
--   Consulta sin índice.
-
-### Estado
-
-Abierto
-
-### Prioridad
-
-Alta
-
-------------------------------------------------------------------------
-
-## Defecto PERF-02 --- Error rate elevado bajo Stress
-
--   Capa afectada: Servidor de aplicación\
--   Escenario: Stress Test (600 VUs)\
--   SLO definido: Error rate \< 1%\
--   Resultado obtenido: 3.8%
-
-### Evidencia
-
-http_req_failed: 3.8%\
-status=500 detectado
-
-### Impacto
-
-Fallas del sistema bajo carga alta.
-
-### Causa probable
-
--   Agotamiento de threads.\
--   Configuración insuficiente.
-
-### Estado
-
-En progreso
-
-### Prioridad
-
-Crítica
-
-------------------------------------------------------------------------
-
-## Defecto PERF-03 --- Degradación progresiva en Soak Test
-
--   Capa afectada: JVM / Memoria\
--   Escenario: Soak Test (2 horas)\
--   Resultado esperado: Latencia estable\
--   Resultado obtenido: Incremento progresivo de 210ms a 480ms
-
-### Impacto
-
-Posible fuga de memoria o acumulación de recursos.
-
-### Estado
-
-Abierto
-
-### Prioridad
-
-Media
-
-------------------------------------------------------------------------
-
-## Formato 2: Tabla de seguimiento
-
-| ID | Escenario | Resultado esperado | Resultado obtenido | Estado | Prioridad |
-|----|-----------|--------------------|--------------------|--------|-----------|
-| PERF-01 | Load | p95 < 300 ms | 612 ms | Abierto | Alta |
-| PERF-02 | Stress | Error < 1% | 3.8% | En progreso | Crítica |
-| PERF-03 | Soak | Latencia estable | Degradación progresiva | Abierto | Media |
-
-------------------------------------------------------------------------
-
-## Convenciones de Estado
-
-Abierto: Defecto identificado sin corrección aplicada.\
-En progreso: En proceso de corrección.\
-Resuelto: Corregido y validado con nuevas pruebas.
-
-------------------------------------------------------------------------
-
-Universidad de La Sabana -- Facultad de Ingeniería\
-Curso: Testing y Validación de Software (2025-1)
+| ID | Escenario | Esperado | Obtenido | Estado |
+|---|---|---|---|---|
+| 01 | stress | 0 errores | 5 conexiones rechazadas | Abierto |
+| 02 | stress | Encontrar saturación | p95 plano | Abierto |
