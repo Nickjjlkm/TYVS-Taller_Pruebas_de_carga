@@ -1,0 +1,3 @@
+http_server_requests_seconds{exception="None",method="POST",outcome="SUCCESS",status="200",uri="/register",quantile="0.5",} 9.728E-5
+http_server_requests_seconds{exception="None",method="POST",outcome="SUCCESS",status="200",uri="/register",quantile="0.95",} 2.28352E-4
+http_server_requests_seconds{exception="None",method="POST",outcome="SUCCESS",status="200",uri="/register",quantile="0.99",} 5.23264E-4

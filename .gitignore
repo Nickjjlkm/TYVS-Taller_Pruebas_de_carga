@@ -27,3 +27,6 @@ perf/lab/results/
 perf/lab/pool/
 perf/lab/deck/out/
 __pycache__/
+!perf/results/summary-*.json
+!perf/results/actuator-*
+!perf/results/k6-*.log
